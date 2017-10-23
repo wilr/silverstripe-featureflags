@@ -55,7 +55,7 @@ SilverStripe\FeatureFlags\FeatureFlag:
     - code: FEATURE_NAME
       title: My feature 
       context:
-        Member: Member
+        Member: SilverStripe\Security\Member
 ```
 
 Each feature have the following options:
