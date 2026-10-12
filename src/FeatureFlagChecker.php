@@ -3,15 +3,18 @@
 namespace SilverStripe\FeatureFlags;
 
 /**
- * Default implementation fo FeatureFlagCheckable.
+ * Default implementation of FeatureFlagCheckable.
  * Uses the FeatureSelection / FeatureSelectionItem data objects
  */
 class FeatureFlagChecker implements FeatureFlagCheckable
 {
-
-    public static function isEnabled($code, $context)
+    public function isEnabled(string $code, array $context = []): bool
     {
-        $feature = FeatureSelection::get()->filter([ 'Code' => $code ])->first();
+        $feature = FeatureSelection::get()->filter(['Code' => $code])->first();
+
+        if (!$feature) {
+            return false;
+        }
 
         // Simple modes
         if ($feature->EnableMode === 'On') {
@@ -20,8 +23,6 @@ class FeatureFlagChecker implements FeatureFlagCheckable
         if ($feature->EnableMode === 'Off') {
             return false;
         }
-
-        // TODO: validate context
 
         // Check each context value against the selections
         foreach ($context as $key => $obj) {

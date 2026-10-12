@@ -2,31 +2,47 @@
 
 namespace SilverStripe\FeatureFlags;
 
+use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Core\Config\Config;
 
 /**
  * Class for interacting with the available feature flags
  */
 class FeatureFlag
 {
+    use Configurable;
+    use Injectable;
 
-    public static function isEnabled($code, $context)
+    /**
+     * @var array<int, array{code: string, title: string, context?: array<string, class-string>}>
+     */
+    private static array $features = [];
+
+    public static function isEnabled(string $code, array $context = []): bool
     {
-        return Injector::inst()->get(FeatureFlagChecker::class)->isEnabled($code, $context);
+        return Injector::inst()->get(FeatureFlagCheckable::class)->isEnabled($code, $context);
     }
 
-    public static function allFeatures()
+    /**
+     * @return array<int, array{code: string, title: string, context?: array<string, class-string>}>
+     */
+    public static function allFeatures(): array
     {
-        return (array)Config::inst()->get(self::class, 'features');
+        return (array) static::config()->get('features');
     }
 
-    public static function getFeature($code)
+    /**
+     * @return array{code: string, title: string, context?: array<string, class-string>}|null
+     */
+    public static function getFeature(string $code): ?array
     {
-        foreach(self::allFeatures() as $feature) {
-            if($feature['code'] == $code) {
+        foreach (FeatureFlag::allFeatures() as $feature) {
+            if (($feature['code'] ?? null) === $code) {
                 return $feature;
             }
         }
+
+        return null;
     }
 }

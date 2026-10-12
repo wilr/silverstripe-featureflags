@@ -1,0 +1,10 @@
+/vendor/
+/public/
+/resources/
+/composer.lock
+.phpunit.result.cache
+.phpstan/
+.idea/
+.vscode/
+*.sublime-*
+.DS_Store

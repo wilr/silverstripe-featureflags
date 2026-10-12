@@ -1,6 +1,10 @@
 ---
-name: featureflags
+Name: featureflags
 ---
 SilverStripe\FeatureFlags\FeatureFlagAdmin:
   context_field_providers:
     SilverStripe\Security\Member: SilverStripe\FeatureFlags\Context\MemberFieldProvider
+
+SilverStripe\Core\Injector\Injector:
+  SilverStripe\FeatureFlags\FeatureFlagCheckable:
+    class: SilverStripe\FeatureFlags\FeatureFlagChecker

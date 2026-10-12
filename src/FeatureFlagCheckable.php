@@ -7,5 +7,5 @@ namespace SilverStripe\FeatureFlags;
  */
 interface FeatureFlagCheckable
 {
-    public static function isEnabled($code, $context);
+    public function isEnabled(string $code, array $context = []): bool;
 }

@@ -2,44 +2,40 @@
 
 namespace SilverStripe\FeatureFlags\Context;
 
-use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\DB;
-use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Security\Member as MemberData;
+use SilverStripe\Security\Member;
 
 class MemberFieldProvider implements FieldProvider
 {
+    private string $key = '';
 
-    private $key;
-
-    public function setKey($key)
+    public function setKey(string $key): void
     {
         $this->key = $key;
     }
 
-    public function getKey()
+    public function getKey(): string
     {
         return $this->key;
     }
 
-    public function getCMSFields()
+    public function getCMSFields(): FieldList
     {
-        return new FieldList(
-            new CheckboxSetField($this->key, $this->key, MemberData::get())
+        return FieldList::create(
+            CheckboxSetField::create($this->key, $this->key, Member::get())
         );
     }
 
-    public function convertItemsToFormData($items)
+    public function convertItemsToFormData(array $items): array
     {
         return [
-            $this->key => $items
+            $this->key => $items,
         ];
     }
 
-    public function convertFormDataToItems($formData)
+    public function convertFormDataToItems(array $formData): array
     {
-        return (array)$formData[$this->key];
+        return (array) ($formData[$this->key] ?? []);
     }
 }

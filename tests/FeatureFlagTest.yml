@@ -1,0 +1,24 @@
+SilverStripe\Security\Member:
+  allowed:
+    FirstName: Allowed
+    Email: allowed@example.com
+  denied:
+    FirstName: Denied
+    Email: denied@example.com
+
+SilverStripe\FeatureFlags\FeatureSelection:
+  alwaysOn:
+    Code: ALWAYS_ON
+    EnableMode: On
+  alwaysOff:
+    Code: ALWAYS_OFF
+    EnableMode: Off
+  memberFeature:
+    Code: MEMBER_FEATURE
+    EnableMode: Partial
+
+SilverStripe\FeatureFlags\FeatureSelectionItem:
+  allowedMember:
+    ContextKey: Member
+    ContextID: =>SilverStripe\Security\Member.allowed
+    FeatureSelection: =>SilverStripe\FeatureFlags\FeatureSelection.memberFeature
