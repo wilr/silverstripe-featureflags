@@ -16,11 +16,14 @@ class FeatureFlagChecker implements FeatureFlagCheckable
             return false;
         }
 
+        // Takes any scheduled mode change which is now due into account
+        $mode = $feature->getEffectiveMode();
+
         // Simple modes
-        if ($feature->EnableMode === 'On') {
+        if ($mode === 'On') {
             return true;
         }
-        if ($feature->EnableMode === 'Off') {
+        if ($mode === 'Off') {
             return false;
         }
 

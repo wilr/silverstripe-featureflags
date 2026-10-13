@@ -3,17 +3,25 @@
 namespace SilverStripe\FeatureFlags;
 
 use LogicException;
+use SilverStripe\Core\Validation\ValidationResult;
 use SilverStripe\FeatureFlags\Context\FieldProvider;
+use SilverStripe\Forms\DatetimeField;
+use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\SelectField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
+use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverStripe\ORM\HasManyList;
 use SilverStripe\Security\Permission;
 
 /**
+ * @property string $Code
+ * @property string $EnableMode
+ * @property string|null $ScheduledMode
+ * @property string|null $ScheduledAt
  * @method HasManyList<FeatureSelectionItem> Items()
  */
 class FeatureSelection extends DataObject
@@ -27,6 +35,9 @@ class FeatureSelection extends DataObject
     private static array $db = [
         'Code' => 'Varchar(50)',
         'EnableMode' => 'Enum("Off, On, Partial", "Off")',
+        // Mode to switch to once ScheduledAt has passed. Empty means no scheduled change.
+        'ScheduledMode' => 'Varchar(10)',
+        'ScheduledAt' => 'Datetime',
     ];
 
     private static array $indexes = [
@@ -41,7 +52,13 @@ class FeatureSelection extends DataObject
         'Code' => 'Code',
         'Title' => 'Title',
         'EnableMode' => 'Mode',
+        'ScheduleSummary' => 'Scheduled change',
     ];
+
+    /**
+     * @var array<int, string>
+     */
+    private static array $enable_modes = ['On', 'Off', 'Partial'];
 
     public function getTitle(): string
     {
@@ -53,6 +70,71 @@ class FeatureSelection extends DataObject
         }
 
         return (string) $this->Code;
+    }
+
+    /**
+     * Returns true if a scheduled mode change has been set and its time has passed
+     */
+    public function isScheduleDue(): bool
+    {
+        if (!$this->ScheduledMode || !$this->ScheduledAt) {
+            return false;
+        }
+
+        $scheduledAt = $this->dbObject('ScheduledAt')->getTimestamp();
+
+        return $scheduledAt <= DBDatetime::now()->getTimestamp();
+    }
+
+    /**
+     * The mode currently in effect, taking any due scheduled change into account
+     */
+    public function getEffectiveMode(): string
+    {
+        return $this->isScheduleDue() ? (string) $this->ScheduledMode : (string) $this->EnableMode;
+    }
+
+    /**
+     * Persist a due scheduled change: copies ScheduledMode into EnableMode and clears the schedule.
+     *
+     * @return bool true if the record was changed
+     */
+    public function applySchedule(): bool
+    {
+        if (!$this->isScheduleDue()) {
+            return false;
+        }
+
+        $this->EnableMode = $this->ScheduledMode;
+        $this->ScheduledMode = null;
+        $this->ScheduledAt = null;
+        $this->write();
+
+        return true;
+    }
+
+    public function getScheduleSummary(): string
+    {
+        if (!$this->ScheduledMode || !$this->ScheduledAt) {
+            return '';
+        }
+
+        return $this->ScheduledMode . ' at ' . $this->dbObject('ScheduledAt')->Nice();
+    }
+
+    public function validate(): ValidationResult
+    {
+        $result = parent::validate();
+
+        if ($this->ScheduledMode && !in_array($this->ScheduledMode, static::config()->get('enable_modes'), true)) {
+            $result->addFieldError('ScheduledMode', 'Invalid scheduled mode');
+        }
+
+        if ($this->ScheduledMode && !$this->ScheduledAt) {
+            $result->addFieldError('ScheduledAt', 'Please choose when the scheduled change should happen');
+        }
+
+        return $result;
     }
 
     public function canView($member = null): bool
@@ -81,6 +163,7 @@ class FeatureSelection extends DataObject
 
         $fields->addFieldToTab('Root.Main', ReadonlyField::create('Code'), 'EnableMode');
         $fields->removeFieldFromTab('Root', 'Items');
+        $fields->removeByName(['ScheduledMode', 'ScheduledAt']);
 
         $fieldProviders = $this->getFieldProviders();
         foreach ($fieldProviders as $fieldProvider) {
@@ -88,15 +171,25 @@ class FeatureSelection extends DataObject
         }
 
         // If there are no context field providers, Partial mode is not allowed
-        if (!$fieldProviders) {
+        $modes = ['On' => 'On', 'Off' => 'Off'];
+        if ($fieldProviders) {
+            $modes['Partial'] = 'Partial';
+        } else {
             $enableMode = $fields->dataFieldByName('EnableMode');
             if ($enableMode instanceof SelectField) {
-                $enableMode->setSource([
-                    'On' => 'On',
-                    'Off' => 'Off',
-                ]);
+                $enableMode->setSource($modes);
             }
         }
+
+        $fields->addFieldsToTab('Root.Schedule', [
+            DropdownField::create('ScheduledMode', 'Change mode to', $modes)
+                ->setEmptyString('No scheduled change')
+                ->setDescription(
+                    'Automatically switch this feature to the selected mode at the given time.'
+                    . ' The change takes effect as soon as the time passes; no cron job is required.'
+                ),
+            DatetimeField::create('ScheduledAt', 'Change at'),
+        ]);
 
         return $fields;
     }

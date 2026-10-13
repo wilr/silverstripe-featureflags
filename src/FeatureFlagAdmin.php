@@ -7,6 +7,7 @@ use SilverStripe\FeatureFlags\GridField\FeatureContextItem;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldDetailForm;
+use SilverStripe\ORM\SS_List;
 
 class FeatureFlagAdmin extends ModelAdmin
 {
@@ -24,6 +25,18 @@ class FeatureFlagAdmin extends ModelAdmin
      * @var array<class-string, class-string>
      */
     private static array $context_field_providers = [];
+
+    public function getList(): SS_List
+    {
+        // Persist any scheduled changes that are due so the CMS reflects the mode in effect
+        if ($this->modelClass === FeatureSelection::class) {
+            foreach (FeatureSelection::get()->exclude(['ScheduledAt' => null]) as $selection) {
+                $selection->applySchedule();
+            }
+        }
+
+        return parent::getList();
+    }
 
     public function getEditForm($id = null, $fields = null): Form
     {

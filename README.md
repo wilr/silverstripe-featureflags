@@ -64,6 +64,18 @@ Each feature has the following options:
 
 Your CMS UI will have a new section at `/admin/featureflags`. This ModelAdmin lists each available feature and gives form controls for choosing which context values enable the feature.
 
+### Scheduling changes
+
+Each feature flag has a **Schedule** tab in the admin. Use it to switch a flag to a different mode (On, Off or Partial) at a set date and time. This lets you release features out of hours without anyone at the keyboard.
+
+A scheduled change takes effect as soon as its time passes: `FeatureFlag::isEnabled()` checks the schedule on every call, so you don't need a cron job. The next time the feature flag admin is opened, the due change is saved as the flag's mode and the schedule is cleared.
+
+You can also save due changes from a cron job, which keeps the stored mode accurate even if nobody opens the admin:
+
+```bash
+vendor/bin/sake tasks:apply-feature-flag-schedules
+```
+
 ### Context field providers
 
 For each data type in the context, you need a form control for editing it. These are provided by "context field providers". By default, a provider is included for `SilverStripe\Security\Member`.
