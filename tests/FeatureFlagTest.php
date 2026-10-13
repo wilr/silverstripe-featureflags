@@ -9,6 +9,8 @@ use SilverStripe\FeatureFlags\FeatureSelection;
 use SilverStripe\FeatureFlags\FeatureSelectionItem;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\Form;
+use SilverStripe\ORM\DB;
+use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
 
 class FeatureFlagTest extends SapphireTest
@@ -124,7 +126,7 @@ class FeatureFlagTest extends SapphireTest
         /** @var FeatureSelectionItem $item */
         $item = $this->objFromFixture(FeatureSelectionItem::class, 'allowedMember');
 
-        $this->assertSame(1, $selection->Items()->count());
+        $this->assertSame(2, $selection->Items()->count());
         $this->assertSame('Member', $item->ContextKey);
         $this->assertSame((int) $this->idFromFixture(Member::class, 'allowed'), (int) $item->ContextID);
     }
@@ -136,7 +138,7 @@ class FeatureFlagTest extends SapphireTest
         /** @var FeatureSelection $plain */
         $plain = $this->objFromFixture(FeatureSelection::class, 'alwaysOn');
 
-        $this->assertSame(['Member'], $member->getContextFieldNames());
+        $this->assertSame(['Member', 'Member_Groups'], $member->getContextFieldNames());
         $this->assertSame([], $plain->getContextFieldNames());
     }
 
@@ -144,14 +146,88 @@ class FeatureFlagTest extends SapphireTest
     {
         /** @var FeatureSelection $selection */
         $selection = $this->objFromFixture(FeatureSelection::class, 'memberFeature');
-        $allowedID = (int) $this->idFromFixture(Member::class, 'allowed');
         $deniedID = (int) $this->idFromFixture(Member::class, 'denied');
+        $otherGroupID = (int) $this->idFromFixture(Group::class, 'other');
 
         $form = Form::create(null, 'Form', $selection->getCMSFields(), FieldList::create());
         $form->Fields()->dataFieldByName('Member')->setValue([(string) $deniedID]);
+        $form->Fields()->dataFieldByName('Member_Groups')->setValue([(string) $otherGroupID]);
         $selection->saveContextFromForm($form);
 
-        $this->assertSame([$deniedID], array_map('intval', $selection->Items()->column('ContextID')));
-        $this->assertNotContains($allowedID, array_map('intval', $selection->Items()->column('ContextID')));
+        $members = FeatureSelectionItem::filterByType($selection->Items(), '')->column('ContextID');
+        $groups = FeatureSelectionItem::filterByType($selection->Items(), 'Group')->column('ContextID');
+        $this->assertSame([$deniedID], array_map('intval', $members));
+        $this->assertSame([$otherGroupID], array_map('intval', $groups));
+    }
+
+    public function testCMSFieldsLoadSavedContext(): void
+    {
+        /** @var FeatureSelection $selection */
+        $selection = $this->objFromFixture(FeatureSelection::class, 'memberFeature');
+        $fields = $selection->getCMSFields();
+
+        $this->assertEquals(
+            [$this->idFromFixture(Member::class, 'allowed')],
+            $fields->dataFieldByName('Member')->getValueArray()
+        );
+        $this->assertEquals(
+            [$this->idFromFixture(Group::class, 'beta')],
+            $fields->dataFieldByName('Member_Groups')->getValueArray()
+        );
+    }
+
+    public function testIsEnabledPartialModeMatchesMemberGroup(): void
+    {
+        $this->assertTrue(FeatureFlag::isEnabled(
+            'MEMBER_FEATURE',
+            ['Member' => $this->objFromFixture(Member::class, 'betaMember')]
+        ));
+        $this->assertTrue(
+            FeatureFlag::isEnabled(
+                'MEMBER_FEATURE',
+                ['Member' => $this->objFromFixture(Member::class, 'betaChildMember')]
+            ),
+            'Members of child groups should match'
+        );
+        $this->assertFalse(FeatureFlag::isEnabled(
+            'MEMBER_FEATURE',
+            ['Member' => $this->objFromFixture(Member::class, 'otherMember')]
+        ));
+    }
+
+    public function testItemsWithoutContextTypeMatchByID(): void
+    {
+        /** @var FeatureSelectionItem $item */
+        $item = $this->objFromFixture(FeatureSelectionItem::class, 'allowedMember');
+        DB::prepared_query('UPDATE "FeatureSelectionItem" SET "ContextType" = NULL WHERE "ID" = ?', [$item->ID]);
+
+        $this->assertTrue(FeatureFlag::isEnabled(
+            'MEMBER_FEATURE',
+            ['Member' => $this->objFromFixture(Member::class, 'allowed')]
+        ));
+    }
+
+    public function testContextKeysNotDefinedOnFeatureAreIgnored(): void
+    {
+        $this->assertFalse(FeatureFlag::isEnabled(
+            'MEMBER_FEATURE',
+            ['Other' => $this->objFromFixture(Member::class, 'allowed')]
+        ));
+    }
+
+    public function testSyncContextItemsOnlyTouchesGivenType(): void
+    {
+        /** @var FeatureSelection $selection */
+        $selection = $this->objFromFixture(FeatureSelection::class, 'memberFeature');
+        $allowedItemID = $this->idFromFixture(FeatureSelectionItem::class, 'allowedMember');
+
+        // Re-syncing the same IDs keeps the existing item
+        $selection->syncContextItems('Member', '', [(int) $this->idFromFixture(Member::class, 'allowed')]);
+        $this->assertNotNull(FeatureSelectionItem::get()->byID($allowedItemID));
+
+        // Clearing groups leaves member items alone
+        $selection->syncContextItems('Member', 'Group', []);
+        $this->assertSame(0, FeatureSelectionItem::filterByType($selection->Items(), 'Group')->count());
+        $this->assertSame(1, FeatureSelectionItem::filterByType($selection->Items(), '')->count());
     }
 }

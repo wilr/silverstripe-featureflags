@@ -27,15 +27,17 @@ class FeatureFlagChecker implements FeatureFlagCheckable
             return false;
         }
 
-        // Check each context value against the selections
-        foreach ($context as $key => $obj) {
-            $contextTest = $feature->Items()->filter([
-                'ContextKey' => $key,
-                'ContextID' => $obj ? $obj->ID : 0,
-            ]);
+        // Check each context value against the selections, using the field provider for that key
+        foreach ($context as $key => $value) {
+            $fieldProvider = $feature->getFieldProvider((string) $key);
+            if (!$fieldProvider) {
+                continue;
+            }
+
+            $items = $feature->Items()->filter(['ContextKey' => $key]);
 
             // Any context match will result in the feature being enabled
-            if ($contextTest->count() > 0) {
+            if ($fieldProvider->matchesContext($items, $value)) {
                 return true;
             }
         }

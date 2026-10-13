@@ -78,7 +78,7 @@ vendor/bin/sake tasks:apply-feature-flag-schedules
 
 ### Context field providers
 
-For each data type in the context, you need a form control for editing it. These are provided by "context field providers". By default, a provider is included for `SilverStripe\Security\Member`.
+For each data type in the context, you need a form control for editing it. These are provided by "context field providers". By default, a provider is included for `SilverStripe\Security\Member`. It lets you pick individual members and/or groups; a group enables the feature for all of its members, including members of child groups.
 
 Records are chosen with a searchable picker that loads results as you type. It stays usable with thousands of members or other records.
 
@@ -99,7 +99,19 @@ class ProjectFieldProvider extends DataObjectFieldProvider
 }
 ```
 
-Override `getSourceList()` to limit which records can be selected, or `getLabelField()` to change the label shown for each option. For a completely custom UI, implement `SilverStripe\FeatureFlags\Context\FieldProvider` directly.
+Override `getSourceList()` to limit which records can be selected, or `getLabelField()` to change the label shown for each option.
+
+#### Custom matching
+
+A field provider controls how selections are saved and how they're matched against context at check time. It does this through three `FieldProvider` methods:
+
+- `loadFormData(DataList $items)`: turns the saved items for its key into form data.
+- `saveFormData(FeatureSelection $selection, array $formData)`: saves the submitted form data, usually via `$selection->syncContextItems($key, $type, $ids)`.
+- `matchesContext(DataList $items, mixed $value)`: returns whether the saved items enable the feature for the given context value.
+
+Each saved `FeatureSelectionItem` has a `ContextKey`, a `ContextType` and a `ContextID`. Use `ContextType` to store different kinds of selection for one key. For example, `MemberFieldProvider` saves groups as `ContextKey = Member, ContextType = Group, ContextID = 5`, and checks them with a single query instead of listing every member of the group.
+
+The `MatchesContextByID` trait provides the default behaviour, where a field named after the key holds record IDs. `DataObjectFieldProvider` uses this trait; extend it and override the methods above to add other kinds of selection.
 
 Then attach your provider via the `context_field_providers` config setting:
 

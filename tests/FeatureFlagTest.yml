@@ -1,3 +1,12 @@
+SilverStripe\Security\Group:
+  beta:
+    Title: Beta testers
+  betaChild:
+    Title: Beta child
+    Parent: =>SilverStripe\Security\Group.beta
+  other:
+    Title: Other
+
 SilverStripe\Security\Member:
   allowed:
     FirstName: Allowed
@@ -5,6 +14,18 @@ SilverStripe\Security\Member:
   denied:
     FirstName: Denied
     Email: denied@example.com
+  betaMember:
+    FirstName: Beta
+    Email: beta@example.com
+    Groups: =>SilverStripe\Security\Group.beta
+  betaChildMember:
+    FirstName: BetaChild
+    Email: betachild@example.com
+    Groups: =>SilverStripe\Security\Group.betaChild
+  otherMember:
+    FirstName: Other
+    Email: other@example.com
+    Groups: =>SilverStripe\Security\Group.other
 
 SilverStripe\FeatureFlags\FeatureSelection:
   alwaysOn:
@@ -21,4 +42,9 @@ SilverStripe\FeatureFlags\FeatureSelectionItem:
   allowedMember:
     ContextKey: Member
     ContextID: =>SilverStripe\Security\Member.allowed
+    FeatureSelection: =>SilverStripe\FeatureFlags\FeatureSelection.memberFeature
+  betaGroup:
+    ContextKey: Member
+    ContextType: Group
+    ContextID: =>SilverStripe\Security\Group.beta
     FeatureSelection: =>SilverStripe\FeatureFlags\FeatureSelection.memberFeature
