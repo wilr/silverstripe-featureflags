@@ -4,7 +4,7 @@ namespace SilverStripe\FeatureFlags\Tests;
 
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\FeatureFlags\Context\MemberFieldProvider;
-use SilverStripe\Forms\CheckboxSetField;
+use SilverStripe\Forms\SearchableMultiDropdownField;
 
 class MemberFieldProviderTest extends SapphireTest
 {
@@ -16,7 +16,7 @@ class MemberFieldProviderTest extends SapphireTest
         $this->assertSame('Member', $provider->getKey());
     }
 
-    public function testGetCMSFieldsReturnsCheckboxSet(): void
+    public function testGetCMSFieldsReturnsLazyLoadedSearchableField(): void
     {
         $provider = new MemberFieldProvider();
         $provider->setKey('Member');
@@ -24,8 +24,24 @@ class MemberFieldProviderTest extends SapphireTest
         $fields = $provider->getCMSFields();
 
         $this->assertCount(1, $fields);
-        $this->assertInstanceOf(CheckboxSetField::class, $fields->first());
-        $this->assertSame('Member', $fields->first()->getName());
+        /** @var SearchableMultiDropdownField $field */
+        $field = $fields->first();
+        $this->assertInstanceOf(SearchableMultiDropdownField::class, $field);
+        $this->assertSame('Member', $field->getName());
+        $this->assertTrue($field->getIsLazyLoaded());
+        $this->assertSame('Start typing to search...', $field->getPlaceholder());
+    }
+
+    public function testFieldValueConvertsToItems(): void
+    {
+        $provider = new MemberFieldProvider();
+        $provider->setKey('Member');
+
+        /** @var SearchableMultiDropdownField $field */
+        $field = $provider->getCMSFields()->first();
+        $field->setValue(['3', '5']);
+
+        $this->assertSame([3, 5], $provider->convertFormDataToItems(['Member' => $field->dataValue()]));
     }
 
     public function testConvertItemsAndFormDataRoundTrip(): void
@@ -38,6 +54,7 @@ class MemberFieldProviderTest extends SapphireTest
 
         $this->assertSame(['Member' => $items], $formData);
         $this->assertSame($items, $provider->convertFormDataToItems($formData));
+        $this->assertSame([2, 4], $provider->convertFormDataToItems(['Member' => ['2', '', '4']]));
         $this->assertSame([], $provider->convertFormDataToItems([]));
     }
 }

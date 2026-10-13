@@ -7,6 +7,8 @@ use SilverStripe\Dev\SapphireTest;
 use SilverStripe\FeatureFlags\FeatureFlag;
 use SilverStripe\FeatureFlags\FeatureSelection;
 use SilverStripe\FeatureFlags\FeatureSelectionItem;
+use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\Form;
 use SilverStripe\Security\Member;
 
 class FeatureFlagTest extends SapphireTest
@@ -125,5 +127,31 @@ class FeatureFlagTest extends SapphireTest
         $this->assertSame(1, $selection->Items()->count());
         $this->assertSame('Member', $item->ContextKey);
         $this->assertSame((int) $this->idFromFixture(Member::class, 'allowed'), (int) $item->ContextID);
+    }
+
+    public function testContextFieldNames(): void
+    {
+        /** @var FeatureSelection $member */
+        $member = $this->objFromFixture(FeatureSelection::class, 'memberFeature');
+        /** @var FeatureSelection $plain */
+        $plain = $this->objFromFixture(FeatureSelection::class, 'alwaysOn');
+
+        $this->assertSame(['Member'], $member->getContextFieldNames());
+        $this->assertSame([], $plain->getContextFieldNames());
+    }
+
+    public function testSaveContextFromForm(): void
+    {
+        /** @var FeatureSelection $selection */
+        $selection = $this->objFromFixture(FeatureSelection::class, 'memberFeature');
+        $allowedID = (int) $this->idFromFixture(Member::class, 'allowed');
+        $deniedID = (int) $this->idFromFixture(Member::class, 'denied');
+
+        $form = Form::create(null, 'Form', $selection->getCMSFields(), FieldList::create());
+        $form->Fields()->dataFieldByName('Member')->setValue([(string) $deniedID]);
+        $selection->saveContextFromForm($form);
+
+        $this->assertSame([$deniedID], array_map('intval', $selection->Items()->column('ContextID')));
+        $this->assertNotContains($allowedID, array_map('intval', $selection->Items()->column('ContextID')));
     }
 }
