@@ -101,6 +101,23 @@ class FeatureSelection extends DataObject
         return $fields;
     }
 
+    /**
+     * Names of the form fields used to select context for this feature
+     *
+     * @return string[]
+     */
+    public function getContextFieldNames(): array
+    {
+        $names = [];
+        foreach ($this->getFieldProviders() as $fieldProvider) {
+            foreach ($fieldProvider->getCMSFields()->dataFields() as $field) {
+                $names[] = $field->getName();
+            }
+        }
+
+        return $names;
+    }
+
     public function saveContextFromForm(Form $form): void
     {
         foreach ($this->getFieldProviders() as $fieldProvider) {

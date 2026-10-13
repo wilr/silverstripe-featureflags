@@ -2,8 +2,8 @@
 
 namespace SilverStripe\FeatureFlags\Context;
 
-use SilverStripe\FeatureFlags\Forms\ContextSelectionField;
 use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\SearchableMultiDropdownField;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 
@@ -50,15 +50,19 @@ abstract class DataObjectFieldProvider implements FieldProvider
 
     public function getCMSFields(): FieldList
     {
-        return FieldList::create(
-            ContextSelectionField::create(
-                $this->key,
-                $this->key,
-                $this->getSourceList(),
-                null,
-                $this->getLabelField()
-            )
+        $field = SearchableMultiDropdownField::create(
+            $this->key,
+            $this->key,
+            $this->getSourceList(),
+            null,
+            $this->getLabelField()
         );
+        $field->setIsLazyLoaded(true);
+        $field->setPlaceholder(
+            _t(__CLASS__ . '.SEARCH_PLACEHOLDER', 'Start typing to search...')
+        );
+
+        return FieldList::create($field);
     }
 
     public function convertItemsToFormData(array $items): array

@@ -1,0 +1,3 @@
+en:
+  SilverStripe\FeatureFlags\Context\DataObjectFieldProvider:
+    SEARCH_PLACEHOLDER: 'Start typing to search...'

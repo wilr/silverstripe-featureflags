@@ -4,9 +4,7 @@ namespace SilverStripe\FeatureFlags\Tests;
 
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\FeatureFlags\Context\MemberFieldProvider;
-use SilverStripe\FeatureFlags\FeatureSelection;
-use SilverStripe\FeatureFlags\Forms\ContextSelectionField;
-use SilverStripe\Security\Member;
+use SilverStripe\Forms\SearchableMultiDropdownField;
 
 class MemberFieldProviderTest extends SapphireTest
 {
@@ -26,29 +24,24 @@ class MemberFieldProviderTest extends SapphireTest
         $fields = $provider->getCMSFields();
 
         $this->assertCount(1, $fields);
-        /** @var ContextSelectionField $field */
+        /** @var SearchableMultiDropdownField $field */
         $field = $fields->first();
-        $this->assertInstanceOf(ContextSelectionField::class, $field);
+        $this->assertInstanceOf(SearchableMultiDropdownField::class, $field);
         $this->assertSame('Member', $field->getName());
         $this->assertTrue($field->getIsLazyLoaded());
-        $this->assertSame(Member::class, $field->getSourceList()->dataClass());
+        $this->assertSame('Start typing to search...', $field->getPlaceholder());
     }
 
-    public function testFieldValueAndSaveInto(): void
+    public function testFieldValueConvertsToItems(): void
     {
         $provider = new MemberFieldProvider();
         $provider->setKey('Member');
 
-        /** @var ContextSelectionField $field */
+        /** @var SearchableMultiDropdownField $field */
         $field = $provider->getCMSFields()->first();
         $field->setValue(['3', '5']);
 
-        $this->assertSame([3, 5], $field->dataValue());
-
-        // Must not throw, even though FeatureSelection has no "Member" relation
-        $record = FeatureSelection::create();
-        $field->saveInto($record);
-        $this->assertFalse($record->isChanged());
+        $this->assertSame([3, 5], $provider->convertFormDataToItems(['Member' => $field->dataValue()]));
     }
 
     public function testConvertItemsAndFormDataRoundTrip(): void

@@ -14,12 +14,15 @@ class FeatureContextItem extends GridFieldDetailForm_ItemRequest
 {
     protected function saveFormIntoRecord($data, $form): DataObject
     {
-        $record = parent::saveFormIntoRecord($data, $form);
-
-        if ($record instanceof FeatureSelection) {
-            $record->saveContextFromForm($form);
+        if ($this->record instanceof FeatureSelection) {
+            // Context selections are stored as FeatureSelectionItem records rather than as a relation
+            // on the record, so save them here and exclude their fields from the standard form save
+            $this->record->saveContextFromForm($form);
+            foreach ($this->record->getContextFieldNames() as $fieldName) {
+                $form->Fields()->removeByName($fieldName, true);
+            }
         }
 
-        return $record;
+        return parent::saveFormIntoRecord($data, $form);
     }
 }
