@@ -227,9 +227,8 @@ class FeatureSelection extends DataObject
             $fields->addFieldToTab('Root.Main', $field);
         }
 
-        $ids = $this->Items()->filter(['ContextKey' => $fieldProvider->getKey()])->column('ContextID');
-        $formData = $fieldProvider->convertItemsToFormData($ids);
-        $fields->setValues($formData);
+        $items = $this->Items()->filter(['ContextKey' => $fieldProvider->getKey()]);
+        $fields->setValues($fieldProvider->loadFormData($items));
     }
 
     /**
@@ -237,33 +236,48 @@ class FeatureSelection extends DataObject
      */
     protected function saveContext(Form $form, FieldProvider $fieldProvider): void
     {
-        $items = $fieldProvider->convertFormDataToItems($form->getData());
-        $key = $fieldProvider->getKey();
+        $fieldProvider->saveFormData($this, $form->getData());
+    }
 
-        // Remove bad items
-        $badItems = $this->Items()->filter(['ContextKey' => $key]);
-        if ($items) {
-            $badItems = $badItems->filter(['ContextID:not' => $items]);
-        }
+    /**
+     * Replace the items of the given context key and type with the given IDs,
+     * leaving unchanged items in place
+     *
+     * @param int[] $ids
+     */
+    public function syncContextItems(string $key, string $type, array $ids): void
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $existing = FeatureSelectionItem::filterByType($this->Items()->filter(['ContextKey' => $key]), $type);
 
-        foreach ($badItems as $item) {
-            $item->delete();
-        }
-
-        if ($items) {
-            // Identify existing items to neither add nor delete
-            $existingItems = $this->Items()
-                ->filter(['ContextKey' => $key, 'ContextID' => $items])
-                ->column('ContextID');
-
-            // Add new items
-            foreach (array_diff($items, $existingItems) as $itemID) {
-                $item = FeatureSelectionItem::create();
-                $item->ContextKey = $key;
-                $item->ContextID = $itemID;
-                $this->Items()->add($item);
+        foreach ($existing as $item) {
+            if (!in_array((int) $item->ContextID, $ids, true)) {
+                $item->delete();
             }
         }
+
+        $existingIDs = array_map('intval', $existing->column('ContextID'));
+        foreach (array_diff($ids, $existingIDs) as $id) {
+            $item = FeatureSelectionItem::create();
+            $item->ContextKey = $key;
+            $item->ContextType = $type;
+            $item->ContextID = $id;
+            $this->Items()->add($item);
+        }
+    }
+
+    /**
+     * The field provider for the given context key, or null if the feature doesn't define that key
+     */
+    public function getFieldProvider(string $key): ?FieldProvider
+    {
+        foreach ($this->getFieldProviders() as $fieldProvider) {
+            if ($fieldProvider->getKey() === $key) {
+                return $fieldProvider;
+            }
+        }
+
+        return null;
     }
 
     /**

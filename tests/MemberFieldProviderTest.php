@@ -4,7 +4,9 @@ namespace SilverStripe\FeatureFlags\Tests;
 
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\FeatureFlags\Context\MemberFieldProvider;
+use SilverStripe\FeatureFlags\FeatureSelectionItem;
 use SilverStripe\Forms\SearchableMultiDropdownField;
+use SilverStripe\Security\Group;
 
 class MemberFieldProviderTest extends SapphireTest
 {
@@ -16,45 +18,34 @@ class MemberFieldProviderTest extends SapphireTest
         $this->assertSame('Member', $provider->getKey());
     }
 
-    public function testGetCMSFieldsReturnsLazyLoadedSearchableField(): void
+    public function testGetCMSFieldsReturnsMemberAndGroupPickers(): void
     {
         $provider = new MemberFieldProvider();
         $provider->setKey('Member');
 
         $fields = $provider->getCMSFields();
 
-        $this->assertCount(1, $fields);
-        /** @var SearchableMultiDropdownField $field */
-        $field = $fields->first();
-        $this->assertInstanceOf(SearchableMultiDropdownField::class, $field);
-        $this->assertSame('Member', $field->getName());
-        $this->assertTrue($field->getIsLazyLoaded());
-        $this->assertSame('Start typing to search...', $field->getPlaceholder());
+        $this->assertCount(2, $fields);
+        /** @var SearchableMultiDropdownField $members */
+        $members = $fields->dataFieldByName('Member');
+        $this->assertInstanceOf(SearchableMultiDropdownField::class, $members);
+        $this->assertTrue($members->getIsLazyLoaded());
+        $this->assertSame('Start typing to search...', $members->getPlaceholder());
+
+        /** @var SearchableMultiDropdownField $groups */
+        $groups = $fields->dataFieldByName('Member_Groups');
+        $this->assertInstanceOf(SearchableMultiDropdownField::class, $groups);
+        $this->assertTrue($groups->getIsLazyLoaded());
+        $this->assertSame('Member groups', $groups->Title());
     }
 
-    public function testFieldValueConvertsToItems(): void
+    public function testMatchesContextRejectsNonMembers(): void
     {
         $provider = new MemberFieldProvider();
         $provider->setKey('Member');
 
-        /** @var SearchableMultiDropdownField $field */
-        $field = $provider->getCMSFields()->first();
-        $field->setValue(['3', '5']);
-
-        $this->assertSame([3, 5], $provider->convertFormDataToItems(['Member' => $field->dataValue()]));
-    }
-
-    public function testConvertItemsAndFormDataRoundTrip(): void
-    {
-        $provider = new MemberFieldProvider();
-        $provider->setKey('Member');
-
-        $items = [1, 2, 3];
-        $formData = $provider->convertItemsToFormData($items);
-
-        $this->assertSame(['Member' => $items], $formData);
-        $this->assertSame($items, $provider->convertFormDataToItems($formData));
-        $this->assertSame([2, 4], $provider->convertFormDataToItems(['Member' => ['2', '', '4']]));
-        $this->assertSame([], $provider->convertFormDataToItems([]));
+        $items = FeatureSelectionItem::get();
+        $this->assertFalse($provider->matchesContext($items, null));
+        $this->assertFalse($provider->matchesContext($items, Group::create()));
     }
 }

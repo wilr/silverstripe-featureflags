@@ -1,3 +1,5 @@
 en:
   SilverStripe\FeatureFlags\Context\DataObjectFieldProvider:
     SEARCH_PLACEHOLDER: 'Start typing to search...'
+  SilverStripe\FeatureFlags\Context\MemberFieldProvider:
+    GROUPS: '{key} groups'

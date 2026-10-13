@@ -11,10 +11,13 @@ use SilverStripe\ORM\DataObject;
  * Base field provider for selecting any DataObject as context.
  *
  * Uses a searchable, lazy-loading picker so it scales to large numbers of records.
+ * Selections are stored and matched by record ID (see MatchesContextByID).
  * Subclasses only need to define getDataClass(), and optionally getSourceList() or getLabelField().
  */
 abstract class DataObjectFieldProvider implements FieldProvider
 {
+    use MatchesContextByID;
+
     private string $key = '';
 
     /**
@@ -63,17 +66,5 @@ abstract class DataObjectFieldProvider implements FieldProvider
         );
 
         return FieldList::create($field);
-    }
-
-    public function convertItemsToFormData(array $items): array
-    {
-        return [
-            $this->key => array_map('intval', $items),
-        ];
-    }
-
-    public function convertFormDataToItems(array $formData): array
-    {
-        return array_values(array_filter(array_map('intval', (array) ($formData[$this->key] ?? []))));
     }
 }
