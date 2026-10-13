@@ -1,3 +1,12 @@
 en:
   SilverStripe\FeatureFlags\Context\DataObjectFieldProvider:
     SEARCH_PLACEHOLDER: 'Start typing to search...'
+  SilverStripe\FeatureFlags\FeatureSelection:
+    INVALID_SCHEDULED_MODE: 'Invalid scheduled mode'
+    NO_SCHEDULED_CHANGE: 'No scheduled change'
+    SCHEDULED_AT: 'Change at'
+    SCHEDULED_AT_REQUIRED: 'Please choose when the scheduled change should happen'
+    SCHEDULED_MODE: 'Change mode to'
+    SCHEDULED_MODE_DESCRIPTION: 'Automatically switch this feature to the selected mode at the given time. The change takes effect as soon as the time passes; no cron job is required.'
+    SCHEDULE_SUMMARY: '{mode} at {time}'
+    SCHEDULE_TAB: Schedule

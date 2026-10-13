@@ -119,7 +119,11 @@ class FeatureSelection extends DataObject
             return '';
         }
 
-        return $this->ScheduledMode . ' at ' . $this->dbObject('ScheduledAt')->Nice();
+        return _t(
+            __CLASS__ . '.SCHEDULE_SUMMARY',
+            '{mode} at {time}',
+            ['mode' => $this->ScheduledMode, 'time' => $this->dbObject('ScheduledAt')->Nice()]
+        );
     }
 
     public function validate(): ValidationResult
@@ -127,11 +131,17 @@ class FeatureSelection extends DataObject
         $result = parent::validate();
 
         if ($this->ScheduledMode && !in_array($this->ScheduledMode, static::config()->get('enable_modes'), true)) {
-            $result->addFieldError('ScheduledMode', 'Invalid scheduled mode');
+            $result->addFieldError(
+                'ScheduledMode',
+                _t(__CLASS__ . '.INVALID_SCHEDULED_MODE', 'Invalid scheduled mode')
+            );
         }
 
         if ($this->ScheduledMode && !$this->ScheduledAt) {
-            $result->addFieldError('ScheduledAt', 'Please choose when the scheduled change should happen');
+            $result->addFieldError(
+                'ScheduledAt',
+                _t(__CLASS__ . '.SCHEDULED_AT_REQUIRED', 'Please choose when the scheduled change should happen')
+            );
         }
 
         return $result;
@@ -182,14 +192,16 @@ class FeatureSelection extends DataObject
         }
 
         $fields->addFieldsToTab('Root.Schedule', [
-            DropdownField::create('ScheduledMode', 'Change mode to', $modes)
-                ->setEmptyString('No scheduled change')
-                ->setDescription(
+            DropdownField::create('ScheduledMode', _t(__CLASS__ . '.SCHEDULED_MODE', 'Change mode to'), $modes)
+                ->setEmptyString(_t(__CLASS__ . '.NO_SCHEDULED_CHANGE', 'No scheduled change'))
+                ->setDescription(_t(
+                    __CLASS__ . '.SCHEDULED_MODE_DESCRIPTION',
                     'Automatically switch this feature to the selected mode at the given time.'
                     . ' The change takes effect as soon as the time passes; no cron job is required.'
-                ),
-            DatetimeField::create('ScheduledAt', 'Change at'),
+                )),
+            DatetimeField::create('ScheduledAt', _t(__CLASS__ . '.SCHEDULED_AT', 'Change at')),
         ]);
+        $fields->fieldByName('Root.Schedule')?->setTitle(_t(__CLASS__ . '.SCHEDULE_TAB', 'Schedule'));
 
         return $fields;
     }
