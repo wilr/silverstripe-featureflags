@@ -68,10 +68,28 @@ Your CMS UI will have a new section at `/admin/featureflags`. This ModelAdmin li
 
 For each data type in the context, you need a form control for editing it. These are provided by "context field providers". By default, a provider is included for `SilverStripe\Security\Member`.
 
-To add your own:
+Records are chosen with a searchable picker that loads results as you type. It stays usable with thousands of members or other records.
 
-1. Define a class that implements `SilverStripe\FeatureFlags\Context\FieldProvider`.
-2. Attach that class via the `context_field_providers` config setting:
+To add your own for a DataObject, extend `SilverStripe\FeatureFlags\Context\DataObjectFieldProvider`:
+
+```php
+namespace App\FeatureFlags;
+
+use App\Model\Project;
+use SilverStripe\FeatureFlags\Context\DataObjectFieldProvider;
+
+class ProjectFieldProvider extends DataObjectFieldProvider
+{
+    protected function getDataClass(): string
+    {
+        return Project::class;
+    }
+}
+```
+
+Override `getSourceList()` to limit which records can be selected, or `getLabelField()` to change the label shown for each option. For a completely custom UI, implement `SilverStripe\FeatureFlags\Context\FieldProvider` directly.
+
+Then attach your provider via the `context_field_providers` config setting:
 
 ```yml
 SilverStripe\FeatureFlags\FeatureFlagAdmin:
