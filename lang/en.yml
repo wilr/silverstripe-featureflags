@@ -1,6 +1,8 @@
 en:
   SilverStripe\FeatureFlags\Context\DataObjectFieldProvider:
     SEARCH_PLACEHOLDER: 'Start typing to search...'
+  SilverStripe\FeatureFlags\Context\MemberFieldProvider:
+    GROUPS: '{key} groups'
   SilverStripe\FeatureFlags\FeatureSelection:
     INVALID_SCHEDULED_MODE: 'Invalid scheduled mode'
     NO_SCHEDULED_CHANGE: 'No scheduled change'
